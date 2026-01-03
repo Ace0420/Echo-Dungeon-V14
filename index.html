@@ -447,7 +447,16 @@
         // ------------------------------------------------------------
         
         function speak(text, callback) {
-            window.speechSynthesis.cancel();
+            if (!window.speechSynthesis) {
+                if (callback) callback();
+                return;
+            }
+            
+            try {
+                window.speechSynthesis.cancel();
+            } catch(e) {
+                // Ignore cancel errors
+            }
             
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 1.0;
@@ -462,7 +471,11 @@
                 if (callback) callback();
             };
             
-            window.speechSynthesis.speak(utterance);
+            try {
+                window.speechSynthesis.speak(utterance);
+            } catch(e) {
+                if (callback) callback();
+            }
         }
 
         // ------------------------------------------------------------
@@ -4520,7 +4533,13 @@
             
             if (game.listening) return;
             
-            window.speechSynthesis.cancel();
+            try {
+                if (window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                }
+            } catch(e) {
+                // Ignore errors
+            }
             
             try {
                 recognition.start();
@@ -4528,7 +4547,6 @@
                 // Already started
             }
         }
-
         // ------------------------------------------------------------
         // SECTION 85: PROCESS COMMAND - MAIN ROUTER
         // Routes voice commands to appropriate functions
@@ -5214,4 +5232,5 @@
     </script>
 </body>
 </html>
+
 
