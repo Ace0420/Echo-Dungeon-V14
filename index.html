@@ -26,10 +26,36 @@
             top: 0;
             left: 0;
         }
+
+        #micButton {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #222;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+            z-index: 10;
+        }
+
+        #micButton:active {
+            background: #444;
+        }
+
+        .listening {
+            background: #004400 !important;
+        }
+
+        .start-button {
+            background: #000044 !important;
+        }
     </style>
 </head>
 <body>
     <div id="game"></div>
+    <button id="micButton" class="start-button" aria-label="Voice command button - Tap to speak"></button>
 
     <script>
         // ============================================================
@@ -50,8 +76,9 @@
         // ------------------------------------------------------------
         // SECTION 1: DOM ELEMENTS
         // ------------------------------------------------------------
-        
+
         const gameArea = document.getElementById('game');
+        const micButton = document.getElementById('micButton');
         let recognition = null;
 
         // ------------------------------------------------------------
@@ -2021,9 +2048,8 @@
                 enemyWeakened: false,
                 weakenTurns: 0
             };
-            
+
             game.phase = 'combat';
-            micButton.className = 'listening';
         }
 
         // ------------------------------------------------------------
@@ -2036,9 +2062,7 @@
                 speak('You are not in combat.');
                 return;
             }
-            
-            micButton.className = 'processing';
-            
+
             // Calculate base damage
             let damage = calculateAttackDamage();
             
@@ -2157,8 +2181,7 @@
                 speak('You are not in combat.');
                 return;
             }
-            
-            micButton.className = 'processing';
+
             game.combat.playerDefending = true;
             game.phase = 'defending';
             
@@ -2265,9 +2288,7 @@
                 speak('You are not in combat.');
                 return;
             }
-            
-            micButton.className = 'processing';
-            
+
             const classData = classes[game.player.class];
             const special = classData.special;
             const manaCost = adjustManaCost(special.cost);
@@ -2369,9 +2390,7 @@
                 speak('You can only cast spells in combat.');
                 return;
             }
-            
-            micButton.className = 'processing';
-            
+
             // Find which spell was mentioned
             let spellToCast = null;
             for (let ability of abilities) {
@@ -2696,7 +2715,6 @@
                 speak('You successfully flee from combat! The enemy remains in this room.', () => {
                     game.combat = null;
                     game.phase = 'exploration';
-                    micButton.className = '';
                 });
             } else {
                 speak(`You try to flee but the ${game.combat.enemy.name} blocks your escape!`, () => {
@@ -2753,8 +2771,7 @@
             // Clear combat effects
             game.combat = null;
             game.phase = 'exploration';
-            micButton.className = '';
-            
+
             speakSequence(messages, () => {
                 gainExperience(exp);
                 
@@ -4498,25 +4515,27 @@
             
             recognition.onstart = function() {
                 game.listening = true;
+                micButton.classList.add('listening');
             };
-            
+
             recognition.onend = function() {
-                game.listening = false;
+                stopListening();
             };
-            
+
             recognition.onerror = function(event) {
-                game.listening = false;
-                
+                stopListening();
+
                 if (event.error === 'no-speech') {
                     speak('I did not hear anything. Tap and try again.');
                 } else if (event.error === 'not-allowed') {
                     speak('Microphone access denied. Please allow microphone access and reload the page.');
                 }
             };
-            
+
             recognition.onresult = function(event) {
                 const command = event.results[0][0].transcript.toLowerCase().trim();
-                processCommand(command);
+                stopListening();
+                setTimeout(() => processCommand(command), 500);
             };
             
             return true;
@@ -4530,9 +4549,12 @@
             if (!recognition) {
                 if (!setupSpeechRecognition()) return;
             }
-            
-            if (game.listening) return;
-            
+
+            if (game.listening) {
+                stopListening();
+                return;
+            }
+
             try {
                 if (window.speechSynthesis) {
                     window.speechSynthesis.cancel();
@@ -4540,13 +4562,30 @@
             } catch(e) {
                 // Ignore errors
             }
-            
+
             try {
                 recognition.start();
             } catch (e) {
                 // Already started
             }
         }
+
+        // ------------------------------------------------------------
+        // SECTION 84.5: STOP LISTENING
+        // ------------------------------------------------------------
+
+        function stopListening() {
+            game.listening = false;
+            micButton.classList.remove('listening');
+            if (recognition) {
+                try {
+                    recognition.stop();
+                } catch (e) {
+                    // Ignore stop errors
+                }
+            }
+        }
+
         // ------------------------------------------------------------
         // SECTION 85: PROCESS COMMAND - MAIN ROUTER
         // Routes voice commands to appropriate functions
@@ -5189,13 +5228,13 @@
         // SECTION 88: TAP ANYWHERE TO LISTEN
         // Full screen touch - blind first UI
         // ------------------------------------------------------------
-        
-        gameArea.addEventListener('click', function(e) {
+
+        micButton.addEventListener('click', function(e) {
             e.preventDefault();
             startListening();
         });
-        
-        gameArea.addEventListener('touchstart', function(e) {
+
+        micButton.addEventListener('touchstart', function(e) {
             e.preventDefault();
             startListening();
         }, { passive: false });
