@@ -46,6 +46,7 @@
 
         .listening {
             background: #00FF00 !important;
+            opacity: 1 !important;
         }
 
         .start-button {
@@ -4675,10 +4676,15 @@
             const cmd = command.toLowerCase().trim();
             
             // ----------------------------------------
-            // PHASE: Main menu - Class selection
-            // (Welcome is now handled in handleClick)
+            // PHASE: Main menu
             // ----------------------------------------
             if (!game.initialized) {
+                if (cmd.includes('new') && cmd.includes('game')) {
+                    speak('Wonderful! Let us create your hero. What is your name, brave adventurer?');
+                    game.phase = 'naming';
+                    return;
+                }
+
                 if (cmd.includes('load')) {
                     const loadMatch = cmd.replace('load', '').replace('game', '').trim();
                     if (loadMatch) {
@@ -4694,28 +4700,14 @@
                     return;
                 }
 
-                // Direct class selection - V12 style
-                if (cmd.includes('warrior') || cmd.includes('fighter') || cmd.includes('knight')) {
-                    selectClassV12('warrior');
-                    return;
-                }
-                if (cmd.includes('mage') || cmd.includes('wizard') || cmd.includes('sorcerer')) {
-                    selectClassV12('mage');
-                    return;
-                }
-                if (cmd.includes('rogue') || cmd.includes('thief') || cmd.includes('assassin')) {
-                    selectClassV12('rogue');
-                    return;
-                }
-
-                speak('Choose your class: Warrior, Mage, or Rogue. Or say load game to continue a saved character.');
+                speak('Say new game to create a new character, or load followed by a character name to continue.');
                 return;
             }
             
             // ----------------------------------------
-            // PHASE: Character creation - naming (DISABLED - V12 STYLE)
+            // PHASE: Character creation - naming
             // ----------------------------------------
-            if (false && game.phase === 'naming') {
+            if (game.phase === 'naming') {
                 let name = cmd.replace(/my name is/gi, '')
                              .replace(/i am/gi, '')
                              .replace(/call me/gi, '')
@@ -4735,15 +4727,15 @@
                 speakSequence([
                     `${name}! A fine name indeed.`,
                     'Now, how would you like to be addressed?',
-                    'Say dude for male, chick for female, or non-binary.'
+                    'Say dude for male, or chick for female.'
                 ]);
                 return;
             }
             
             // ----------------------------------------
-            // PHASE: Character creation - gender (DISABLED - V12 STYLE)
+            // PHASE: Character creation - gender
             // ----------------------------------------
-            if (false && game.phase === 'gender') {
+            if (game.phase === 'gender') {
                 if (cmd.includes('dude') || (cmd.includes('male') && !cmd.includes('female'))) {
                     game.player.gender = 'male';
                     speak('Very well! Now, what is your race? Choose from human, elf, dwarf, orc, or halfling.');
@@ -4758,21 +4750,14 @@
                     return;
                 }
 
-                if (cmd.includes('non') || cmd.includes('binary') || cmd.includes('neutral') || cmd.includes('they')) {
-                    game.player.gender = 'nonbinary';
-                    speak('Very well! Now, what is your race? Choose from human, elf, dwarf, orc, or halfling.');
-                    game.phase = 'race';
-                    return;
-                }
-
-                speak('Please choose dude for male, chick for female, or non-binary.');
+                speak('Please choose dude for male, or chick for female.');
                 return;
             }
             
             // ----------------------------------------
-            // PHASE: Character creation - race (DISABLED - V12 STYLE)
+            // PHASE: Character creation - race
             // ----------------------------------------
-            if (false && game.phase === 'race') {
+            if (game.phase === 'race') {
                 let selectedRace = null;
                 
                 if (cmd.includes('human')) selectedRace = 'human';
@@ -4809,9 +4794,9 @@
             }
             
             // ----------------------------------------
-            // PHASE: Character creation - class (DISABLED - V12 STYLE)
+            // PHASE: Character creation - class
             // ----------------------------------------
-            if (false && game.phase === 'class') {
+            if (game.phase === 'class') {
                 let selectedClass = null;
                 
                 if (cmd.includes('warrior') || cmd.includes('fighter') || cmd.includes('knight')) {
@@ -5314,15 +5299,18 @@
 
         function handleClick() {
             if (!game.started) {
-                // First tap - speak welcome message
+                // First tap - speak welcome message then start listening
                 game.started = true;
                 micButton.classList.remove('start-button');
                 speakSequence([
                     'Welcome to Echo Dungeon!',
                     'A voice controlled adventure designed for blind and visually impaired players.',
-                    'Choose your class: Warrior, Mage, or Rogue.',
-                    'Or say load game to continue a saved character.'
-                ]);
+                    'Would you like to start a new game, or load a saved character?',
+                    'Say new game or load game.'
+                ], () => {
+                    // After welcome, automatically start listening
+                    setTimeout(() => startListening(), 500);
+                });
             } else {
                 // Normal tap - start listening
                 startListening();
