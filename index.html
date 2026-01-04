@@ -2866,7 +2866,7 @@
                 'You have fallen in battle.',
                 `You reached level ${game.player.level} on dungeon floor ${game.dungeon.currentLevel}.`,
                 'Your adventure ends here, brave hero.',
-                'Choose a class to start a new game: Warrior, Mage, Rogue, Ranger, or Cleric.',
+                'Choose a class to start a new game: Warrior, Mage, or Rogue.',
                 'Or say load game to continue a saved character.'
             ]);
         }
@@ -4675,22 +4675,8 @@
             const cmd = command.toLowerCase().trim();
             
             // ----------------------------------------
-            // PHASE: Not started - first tap
-            // ----------------------------------------
-            if (!game.started) {
-                game.started = true;
-                speakSequence([
-                    'Welcome to Echo Dungeon!',
-                    'A voice controlled adventure designed for blind and visually impaired players.',
-                    'Tap anywhere on the screen, then speak your command.',
-                    'Choose your class: Warrior, Mage, Rogue, Ranger, or Cleric.',
-                    'Or say load game to continue a saved character.'
-                ]);
-                return;
-            }
-            
-            // ----------------------------------------
             // PHASE: Main menu - Class selection
+            // (Welcome is now handled in handleClick)
             // ----------------------------------------
             if (!game.initialized) {
                 if (cmd.includes('load')) {
@@ -4721,16 +4707,8 @@
                     selectClassV12('rogue');
                     return;
                 }
-                if (cmd.includes('ranger') || cmd.includes('archer') || cmd.includes('hunter')) {
-                    selectClassV12('ranger');
-                    return;
-                }
-                if (cmd.includes('cleric') || cmd.includes('priest') || cmd.includes('healer')) {
-                    selectClassV12('cleric');
-                    return;
-                }
 
-                speak('Choose your class: Warrior, Mage, Rogue, Ranger, or Cleric. Or say load game to continue a saved character.');
+                speak('Choose your class: Warrior, Mage, or Rogue. Or say load game to continue a saved character.');
                 return;
             }
             
@@ -4895,16 +4873,8 @@
                     selectClassV12('rogue');
                     return;
                 }
-                if (cmd.includes('ranger') || cmd.includes('archer') || cmd.includes('hunter')) {
-                    selectClassV12('ranger');
-                    return;
-                }
-                if (cmd.includes('cleric') || cmd.includes('priest') || cmd.includes('healer')) {
-                    selectClassV12('cleric');
-                    return;
-                }
-                
-                speak('Choose a class: Warrior, Mage, Rogue, Ranger, or Cleric. Or say load game.');
+
+                speak('Choose a class: Warrior, Mage, or Rogue. Or say load game.');
                 return;
             }
             
@@ -5342,14 +5312,31 @@
         // Full screen touch - blind first UI
         // ------------------------------------------------------------
 
+        function handleClick() {
+            if (!game.started) {
+                // First tap - speak welcome message
+                game.started = true;
+                micButton.classList.remove('start-button');
+                speakSequence([
+                    'Welcome to Echo Dungeon!',
+                    'A voice controlled adventure designed for blind and visually impaired players.',
+                    'Choose your class: Warrior, Mage, or Rogue.',
+                    'Or say load game to continue a saved character.'
+                ]);
+            } else {
+                // Normal tap - start listening
+                startListening();
+            }
+        }
+
         micButton.addEventListener('click', function(e) {
             e.preventDefault();
-            startListening();
+            handleClick();
         });
 
         micButton.addEventListener('touchstart', function(e) {
             e.preventDefault();
-            startListening();
+            handleClick();
         }, { passive: false });
 
         // ------------------------------------------------------------
@@ -5368,9 +5355,11 @@
         // SECTION 90: INITIAL PAGE LOAD
         // Speak welcome on first tap
         // ------------------------------------------------------------
-        
+
         window.onload = function() {
-            // Silent load - game speaks on first tap
+            setTimeout(function() {
+                speak('Echo Dungeon is ready. Tap the screen to begin.');
+            }, 1000);
         };
 
         // ------------------------------------------------------------
