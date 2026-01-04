@@ -45,7 +45,7 @@
         }
 
         .listening {
-            background: #004400 !important;
+            background: #00FF00 !important;
         }
 
         .start-button {
@@ -2861,12 +2861,13 @@
             
             game.combat = null;
             game.phase = 'dead';
-            
+
             speakSequence([
                 'You have fallen in battle.',
                 `You reached level ${game.player.level} on dungeon floor ${game.dungeon.currentLevel}.`,
                 'Your adventure ends here, brave hero.',
-                'Say load game to continue a saved character, or say new game to start fresh.'
+                'Choose a class to start a new game: Warrior, Mage, Rogue, Ranger, or Cleric.',
+                'Or say load game to continue a saved character.'
             ]);
         }
 
@@ -4587,10 +4588,89 @@
         }
 
         // ------------------------------------------------------------
+        // SECTION 84.7: SELECT CLASS V12 STYLE
+        // Simplified character creation like V12 - just pick class and go
+        // ------------------------------------------------------------
+
+        function selectClassV12(className) {
+            const classData = classes[className];
+
+            if (!classData) {
+                speak('Invalid class selection.');
+                return;
+            }
+
+            // Set class
+            game.player.class = className;
+
+            // Set default name (use class name - user can change when saving)
+            game.player.name = classData.name;
+
+            // Set default race (human)
+            game.player.race = 'human';
+
+            // Set default gender (empty - not used in V12 style)
+            game.player.gender = '';
+
+            // Apply class base stats
+            game.player.health = classData.health;
+            game.player.maxHealth = classData.maxHealth;
+            game.player.mana = classData.mana;
+            game.player.maxMana = classData.maxMana;
+            game.player.gold = classData.gold;
+
+            // Apply class base attributes
+            game.player.strength = classData.baseStrength;
+            game.player.dexterity = classData.baseDexterity;
+            game.player.wisdom = classData.baseWisdom;
+
+            // Apply default race bonuses (human)
+            const raceData = races['human'];
+            game.player.strength += raceData.bonuses.strength;
+            game.player.dexterity += raceData.bonuses.dexterity;
+            game.player.wisdom += raceData.bonuses.wisdom;
+
+            // Equip starting gear
+            game.player.weapon = classData.startWeapon;
+            game.player.armor = classData.startArmor;
+            if (classData.startShield) {
+                game.player.shield = classData.startShield;
+            }
+
+            // Add starting items to inventory
+            for (let item of classData.items) {
+                if (item !== classData.startWeapon && item !== classData.startArmor && item !== classData.startShield) {
+                    game.player.inventory.push(item);
+                }
+            }
+
+            // Calculate derived stats
+            calculateDerivedStats();
+            updateDefense();
+
+            // Mark as initialized
+            game.initialized = true;
+            game.phase = 'exploration';
+
+            // Generate dungeon
+            generateDungeon();
+
+            // Welcome message - V12 style (shorter, simpler)
+            speakSequence([
+                `You are now a ${classData.name}!`,
+                `Health: ${game.player.health}. Mana: ${game.player.mana}. Gold: ${game.player.gold}.`,
+                `You stand at the entrance of the dungeon.`,
+                `Say help for commands, or start exploring! Good luck!`
+            ], () => {
+                setTimeout(() => describeRoom(), 1000);
+            });
+        }
+
+        // ------------------------------------------------------------
         // SECTION 85: PROCESS COMMAND - MAIN ROUTER
         // Routes voice commands to appropriate functions
         // ------------------------------------------------------------
-        
+
         function processCommand(command) {
             const cmd = command.toLowerCase().trim();
             
@@ -4603,22 +4683,16 @@
                     'Welcome to Echo Dungeon!',
                     'A voice controlled adventure designed for blind and visually impaired players.',
                     'Tap anywhere on the screen, then speak your command.',
-                    'Would you like to start a new game, or load a saved character?',
-                    'Say new game or load game.'
+                    'Choose your class: Warrior, Mage, Rogue, Ranger, or Cleric.',
+                    'Or say load game to continue a saved character.'
                 ]);
                 return;
             }
             
             // ----------------------------------------
-            // PHASE: Main menu
+            // PHASE: Main menu - Class selection
             // ----------------------------------------
             if (!game.initialized) {
-                if (cmd.includes('new') && cmd.includes('game')) {
-                    speak('Wonderful! Let us create your hero. What is your name, brave adventurer?');
-                    game.phase = 'naming';
-                    return;
-                }
-                
                 if (cmd.includes('load')) {
                     const loadMatch = cmd.replace('load', '').replace('game', '').trim();
                     if (loadMatch) {
@@ -4628,20 +4702,42 @@
                     }
                     return;
                 }
-                
+
                 if (cmd.includes('list') && cmd.includes('save')) {
                     listSavedCharacters();
                     return;
                 }
-                
-                speak('Say new game to create a new character, or load followed by a character name to continue.');
+
+                // Direct class selection - V12 style
+                if (cmd.includes('warrior') || cmd.includes('fighter') || cmd.includes('knight')) {
+                    selectClassV12('warrior');
+                    return;
+                }
+                if (cmd.includes('mage') || cmd.includes('wizard') || cmd.includes('sorcerer')) {
+                    selectClassV12('mage');
+                    return;
+                }
+                if (cmd.includes('rogue') || cmd.includes('thief') || cmd.includes('assassin')) {
+                    selectClassV12('rogue');
+                    return;
+                }
+                if (cmd.includes('ranger') || cmd.includes('archer') || cmd.includes('hunter')) {
+                    selectClassV12('ranger');
+                    return;
+                }
+                if (cmd.includes('cleric') || cmd.includes('priest') || cmd.includes('healer')) {
+                    selectClassV12('cleric');
+                    return;
+                }
+
+                speak('Choose your class: Warrior, Mage, Rogue, Ranger, or Cleric. Or say load game to continue a saved character.');
                 return;
             }
             
             // ----------------------------------------
-            // PHASE: Character creation - naming
+            // PHASE: Character creation - naming (DISABLED - V12 STYLE)
             // ----------------------------------------
-            if (game.phase === 'naming') {
+            if (false && game.phase === 'naming') {
                 let name = cmd.replace(/my name is/gi, '')
                              .replace(/i am/gi, '')
                              .replace(/call me/gi, '')
@@ -4661,44 +4757,44 @@
                 speakSequence([
                     `${name}! A fine name indeed.`,
                     'Now, how would you like to be addressed?',
-                    'Say male, female, or non-binary.'
+                    'Say dude for male, chick for female, or non-binary.'
                 ]);
                 return;
             }
             
             // ----------------------------------------
-            // PHASE: Character creation - gender
+            // PHASE: Character creation - gender (DISABLED - V12 STYLE)
             // ----------------------------------------
-            if (game.phase === 'gender') {
-                if (cmd.includes('male') && !cmd.includes('female')) {
+            if (false && game.phase === 'gender') {
+                if (cmd.includes('dude') || (cmd.includes('male') && !cmd.includes('female'))) {
                     game.player.gender = 'male';
                     speak('Very well! Now, what is your race? Choose from human, elf, dwarf, orc, or halfling.');
                     game.phase = 'race';
                     return;
                 }
-                
-                if (cmd.includes('female')) {
+
+                if (cmd.includes('chick') || cmd.includes('female')) {
                     game.player.gender = 'female';
                     speak('Very well! Now, what is your race? Choose from human, elf, dwarf, orc, or halfling.');
                     game.phase = 'race';
                     return;
                 }
-                
+
                 if (cmd.includes('non') || cmd.includes('binary') || cmd.includes('neutral') || cmd.includes('they')) {
                     game.player.gender = 'nonbinary';
                     speak('Very well! Now, what is your race? Choose from human, elf, dwarf, orc, or halfling.');
                     game.phase = 'race';
                     return;
                 }
-                
-                speak('Please choose male, female, or non-binary.');
+
+                speak('Please choose dude for male, chick for female, or non-binary.');
                 return;
             }
             
             // ----------------------------------------
-            // PHASE: Character creation - race
+            // PHASE: Character creation - race (DISABLED - V12 STYLE)
             // ----------------------------------------
-            if (game.phase === 'race') {
+            if (false && game.phase === 'race') {
                 let selectedRace = null;
                 
                 if (cmd.includes('human')) selectedRace = 'human';
@@ -4735,9 +4831,9 @@
             }
             
             // ----------------------------------------
-            // PHASE: Character creation - class
+            // PHASE: Character creation - class (DISABLED - V12 STYLE)
             // ----------------------------------------
-            if (game.phase === 'class') {
+            if (false && game.phase === 'class') {
                 let selectedClass = null;
                 
                 if (cmd.includes('warrior') || cmd.includes('fighter') || cmd.includes('knight')) {
@@ -4770,17 +4866,12 @@
             // PHASE: Dead
             // ----------------------------------------
             if (game.phase === 'dead') {
-                if (cmd.includes('new') && cmd.includes('game')) {
-                    game.started = false;
-                    game.initialized = false;
-                    game.phase = 'init';
-                    game.player = createFreshPlayer();
-                    speak('Starting a new adventure. What is your name, brave adventurer?');
-                    game.phase = 'naming';
-                    game.started = true;
-                    return;
-                }
-                
+                // Reset for new game
+                game.started = false;
+                game.initialized = false;
+                game.phase = 'init';
+                game.player = createFreshPlayer();
+
                 if (cmd.includes('load')) {
                     const loadMatch = cmd.replace('load', '').replace('game', '').trim();
                     if (loadMatch) {
@@ -4790,8 +4881,30 @@
                     }
                     return;
                 }
+
+                // Direct class selection - V12 style
+                if (cmd.includes('warrior') || cmd.includes('fighter') || cmd.includes('knight')) {
+                    selectClassV12('warrior');
+                    return;
+                }
+                if (cmd.includes('mage') || cmd.includes('wizard') || cmd.includes('sorcerer')) {
+                    selectClassV12('mage');
+                    return;
+                }
+                if (cmd.includes('rogue') || cmd.includes('thief') || cmd.includes('assassin')) {
+                    selectClassV12('rogue');
+                    return;
+                }
+                if (cmd.includes('ranger') || cmd.includes('archer') || cmd.includes('hunter')) {
+                    selectClassV12('ranger');
+                    return;
+                }
+                if (cmd.includes('cleric') || cmd.includes('priest') || cmd.includes('healer')) {
+                    selectClassV12('cleric');
+                    return;
+                }
                 
-                speak('Say new game to start over, or load followed by a character name.');
+                speak('Choose a class: Warrior, Mage, Rogue, Ranger, or Cleric. Or say load game.');
                 return;
             }
             
