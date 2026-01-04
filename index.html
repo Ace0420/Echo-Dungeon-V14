@@ -4676,15 +4676,10 @@
             const cmd = command.toLowerCase().trim();
             
             // ----------------------------------------
-            // PHASE: Main menu
+            // PHASE: Load game (if needed before character creation)
+            // Character creation starts directly with gender in handleClick
             // ----------------------------------------
-            if (!game.initialized) {
-                if (cmd.includes('new') && cmd.includes('game')) {
-                    speak('Wonderful! Let us create your hero. What is your name, brave adventurer?');
-                    game.phase = 'naming';
-                    return;
-                }
-
+            if (!game.initialized && !game.phase) {
                 if (cmd.includes('load')) {
                     const loadMatch = cmd.replace('load', '').replace('game', '').trim();
                     if (loadMatch) {
@@ -4700,35 +4695,8 @@
                     return;
                 }
 
-                speak('Say new game to create a new character, or load followed by a character name to continue.');
-                return;
-            }
-            
-            // ----------------------------------------
-            // PHASE: Character creation - naming
-            // ----------------------------------------
-            if (game.phase === 'naming') {
-                let name = cmd.replace(/my name is/gi, '')
-                             .replace(/i am/gi, '')
-                             .replace(/call me/gi, '')
-                             .replace(/it's/gi, '')
-                             .trim();
-                
-                name = name.charAt(0).toUpperCase() + name.slice(1);
-                
-                if (name.length < 2) {
-                    speak('Please tell me your name. Just say it clearly.');
-                    return;
-                }
-                
-                game.player.name = name;
-                game.phase = 'gender';
-                
-                speakSequence([
-                    `${name}! A fine name indeed.`,
-                    'Now, how would you like to be addressed?',
-                    'Say dude for male, or chick for female.'
-                ]);
+                // Shouldn't normally reach here - handleClick starts gender phase
+                speak('Please restart. Tap the screen to begin character creation.');
                 return;
             }
             
@@ -4811,8 +4779,10 @@
                     speak('Please choose warrior, mage, or rogue.');
                     return;
                 }
-                
+
                 game.player.class = selectedClass;
+                // Set default name to class name (user names it when saving)
+                game.player.name = classes[selectedClass].name;
                 initializeCharacter();
                 return;
             }
@@ -5278,17 +5248,14 @@
             // Generate dungeon
             generateDungeon();
             
-            // Welcome message
+            // Welcome message - V12 style (shorter)
             speakSequence([
-                `Excellent! ${game.player.name} the ${game.player.race} ${game.player.class} is ready for adventure!`,
-                `You start with ${game.player.health} health, ${game.player.mana} mana, and ${game.player.gold} gold.`,
-                `Your attributes are: Strength ${game.player.strength}, Dexterity ${game.player.dexterity}, Wisdom ${game.player.wisdom}.`,
-                `You are equipped with ${game.player.weapon}${game.player.shield ? ' and ' + game.player.shield : ''}.`,
-                `You stand at the entrance of the dungeon. A welcome chest awaits you!`,
-                `The boss lurks in the far southeast corner at position 11, 11.`,
-                `Tap anywhere and say help for commands. Good luck, brave hero!`
+                `You are now a ${game.player.race} ${game.player.class}!`,
+                `Health: ${game.player.health}. Mana: ${game.player.mana}. Gold: ${game.player.gold}.`,
+                `You stand at the entrance of the dungeon.`,
+                `Say help for commands. Good luck!`
             ], () => {
-                describeRoom();
+                setTimeout(() => describeRoom(), 1000);
             });
         }
 
@@ -5299,16 +5266,17 @@
 
         function handleClick() {
             if (!game.started) {
-                // First tap - speak welcome message then start listening
+                // First tap - speak welcome and start character creation (gender first)
                 game.started = true;
                 micButton.classList.remove('start-button');
                 speakSequence([
                     'Welcome to Echo Dungeon!',
                     'A voice controlled adventure designed for blind and visually impaired players.',
-                    'Would you like to start a new game, or load a saved character?',
-                    'Say new game or load game.'
+                    'Let us create your hero!',
+                    'Are you a dude or a chick?'
                 ], () => {
-                    // After welcome, automatically start listening
+                    // After welcome, start listening for gender
+                    game.phase = 'gender';
                     setTimeout(() => startListening(), 500);
                 });
             } else {
